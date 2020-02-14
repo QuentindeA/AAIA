@@ -261,14 +261,11 @@ void m_to_h(SMAT *M)
         }
     }
 
-    for(int i = 0; i < sizeM; i++)
+    /*for(int i = 0; i < sizeM; i++)
     {
 
         if (M->row[i].nnz == 0)
         {
-
-            /*free(M->row[i].val);
-            free(M->row[i].col);*/
 
             if( ( (M->row[i].col = NEW_A(1,u_int)) == (u_int *)NULL ) )
             {
@@ -285,7 +282,7 @@ void m_to_h(SMAT *M)
             M->row[i].val[0] = 1.0;
             M->row[i].nnz = 1;
         }
-    }
+    }*/
 }
 
 
@@ -305,8 +302,18 @@ VEC *multiply(VEC *vec, SMAT *H )
     VEC *newVec;
     newVec = v_get(vec->dim);
 
+    double standard = 1.0/H->m;
+
     for(int j=0; j<H->m;j++)
     {
+        if(H->row[j].nnz == 0)
+        {
+
+            for(int k=0;k<H->m;k++)
+            {
+                newVec->e[k] += standard*vec->e[j];
+            }
+        }
         for(int k=0;k<H->row[j].nnz;k++)
         {
             newVec->e[H->row[j].col[k]] += H->row[j].val[k]*vec->e[j];
@@ -319,30 +326,30 @@ VEC *multiply(VEC *vec, SMAT *H )
 
 int main()
 {
-  FILE *fp;
-  SMAT *SM;
+    FILE *fp;
+    SMAT *SM;
 
-  fp = fopen( "exemple.dat", "r" );
-  SM = sm_input( fp );
-  fclose( fp );
+    fp = fopen( "exemple.dat", "r" );
+    SM = sm_input( fp );
+    fclose( fp );
 
-  m_to_h(SM);
-  VEC *vec = createVec(SM->m);
+    m_to_h(SM);
+    VEC *vec = createVec(SM->m);
 
-  v_output(stdout, vec);
-  printf("\n");
-  for(int i=0; i<NBMULT; i++)
-  {
+    v_output(stdout, vec);
+    printf("\n");
+    for(int i=0; i<NBMULT; i++)
+    {
       vec = multiply(vec, SM);
-  }
+    }
 
-  v_output(stdout, vec);
-  printf("\n");
+    v_output(stdout, vec);
+    printf("\n");
 
-  sm_output( stdout, SM );
+    sm_output( stdout, SM );
 
-  v_free(vec);
-  sm_free( SM );
+    v_free(vec);
+    sm_free( SM );
 
-  return 0;
+    return 0;
 }
