@@ -15,6 +15,8 @@
 
 #define NBMULT 1000
 
+#define ALPHA 0.0
+
 typedef unsigned int u_int;
 
 /* vector */
@@ -306,22 +308,58 @@ VEC *multiply(VEC *vec, SMAT *H )
 
     for(int j=0; j<H->m;j++)
     {
-        if(H->row[j].nnz == 0)
+        /*if(H->row[j].nnz == 0)
         {
 
             for(int k=0;k<H->m;k++)
             {
                 newVec->e[k] += standard*vec->e[j];
             }
-        }
+        }*/
         for(int k=0;k<H->row[j].nnz;k++)
         {
             newVec->e[H->row[j].col[k]] += H->row[j].val[k]*vec->e[j];
         }
     }
 
-    v_free(vec);
+
     return newVec;
+}
+
+VEC *surfeur(VEC *vec, SMAT *H)
+{
+    VEC *rk_old = multiply(vec, H);
+    VEC *rk_alphaise = v_get(H->m);
+    VEC *a = v_get(H->m);
+    double standard = 1.0/H->m;
+    VEC *rk_new = v_get(H->m);
+    double indicator = 0.0;
+
+    for (size_t i = 0; i < H->m; i++)
+    {
+        rk_alphaise->e[i] = rk_old->e[i]*ALPHA;
+        if(H->row[i].nnz == 0)
+        {
+            a->e[i] = 1.0;
+        }
+    }
+
+    for (size_t i = 0; i < H->m; i++) {
+        indicator += a->e[i]*vec->e[i]*ALPHA;
+    }
+
+
+    for (size_t i = 0; i < H->m; i++) {
+        rk_new->e[i] = rk_alphaise->e[i] + (indicator + 1.0 - ALPHA)*standard;
+
+    }
+
+    v_free(rk_old);
+    v_free(a);
+    v_free(rk_alphaise);
+    return rk_new;
+
+
 }
 
 int main()
@@ -340,7 +378,7 @@ int main()
     printf("\n");
     for(int i=0; i<NBMULT; i++)
     {
-      vec = multiply(vec, SM);
+      vec = surfeur(vec, SM);
     }
 
     v_output(stdout, vec);
