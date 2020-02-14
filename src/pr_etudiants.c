@@ -13,7 +13,7 @@
 /* allocate num objects of given type */
 #define NEW_A(num,type) ((type*)calloc((size_t)(num),(size_t)sizeof(type)))
 
-#define NBMULT 1
+#define NBMULT 1000
 
 typedef unsigned int u_int;
 
@@ -260,7 +260,36 @@ void m_to_h(SMAT *M)
             M->row[i].val[j] = 1.0/M->row[i].nnz;
         }
     }
+
+    for(int i = 0; i < sizeM; i++)
+    {
+
+        if (M->row[i].nnz == 0)
+        {
+
+            /*free(M->row[i].val);
+            free(M->row[i].col);*/
+
+            if( ( (M->row[i].col = NEW_A(1,u_int)) == (u_int *)NULL ) )
+            {
+              fprintf( stderr, "sm_input memory error" );
+              exit( -1 );
+            }
+            if( ( (M->row[i].val = NEW_A(1,double)) == (double *)NULL ) )
+            {
+              fprintf( stderr, "sm_input memory error" );
+              exit( -1 );
+            }
+
+            M->row[i].col[0] = i;
+            M->row[i].val[0] = 1.0;
+            M->row[i].nnz = 1;
+        }
+    }
 }
+
+
+
 VEC *createVec(int m)
 {
     VEC *myVec = v_get(m);
