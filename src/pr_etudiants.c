@@ -1,4 +1,4 @@
-/* PageRank 
+/* PageRank
    The genetic.dat dataset comes from:
    http://www.cs.toronto.edu/~tsap/experiments/datasets/
 */
@@ -12,6 +12,8 @@
 
 /* allocate num objects of given type */
 #define NEW_A(num,type) ((type*)calloc((size_t)(num),(size_t)sizeof(type)))
+
+#define NBMULT 1
 
 typedef unsigned int u_int;
 
@@ -43,13 +45,13 @@ typedef struct
 VEC *v_get( u_int size )
 {
   VEC *v;
-  
+
   if( (v = NEW(VEC)) == (VEC *)NULL )
   {
     fprintf( stderr, "v_get memory error" );
     exit( -1 );
   }
-  
+
   v->dim = size;
   if( (v->e = NEW_A(size,double)) == (double *)NULL )
   {
@@ -57,7 +59,7 @@ VEC *v_get( u_int size )
     fprintf( stderr, "v_get memory error" );
     exit( -1 );
   }
-  
+
   return v;
 }
 
@@ -66,8 +68,8 @@ int v_free( VEC *v )
 {
   if( v == (VEC *)NULL )
     return -1;
-  
-  if( v->e == (double *)NULL ) 
+
+  if( v->e == (double *)NULL )
   {
     free( v );
   }
@@ -76,24 +78,24 @@ int v_free( VEC *v )
     free( v->e );
     free( v );
   }
-  
+
   return 0;
 }
 
-/* sm_get -- gets an mxn sparse matrix by dynamic memory allocation 
+/* sm_get -- gets an mxn sparse matrix by dynamic memory allocation
    Precondition: m>=0 && n>=0
    Postcondition: each row is empty*/
 SMAT *sm_get( u_int m, u_int n )
 {
   SMAT *M;
   u_int i;
-  
+
   if( (M = NEW(SMAT)) == (SMAT *)NULL )
   {
     fprintf( stderr, "sm_get memory error" );
     exit( -1 );
   }
-  
+
   M->m = m ; M->n = n;
 
   if( (M->row = NEW_A(m,SROW)) == (SROW *)NULL )
@@ -102,7 +104,7 @@ SMAT *sm_get( u_int m, u_int n )
     fprintf( stderr, "sm_get memory error" );
     exit( -1 );
   }
-  
+
   for( i = 0 ; i < m ; i++ )
   {
     (M->row[i]).nnz = 0;
@@ -120,8 +122,8 @@ int sm_free( SMAT *M )
   SROW *ri;
 
   if( M == (SMAT *)NULL ) return -1;
-  
-  if( M->row == (SROW *)NULL ) 
+
+  if( M->row == (SROW *)NULL )
   {
     free( M );
   }
@@ -139,11 +141,11 @@ int sm_free( SMAT *M )
     free( M->row );
     free( M );
   }
-  
+
   return 0;
 }
 
-/* sm_input -- file input of sparse matrix 
+/* sm_input -- file input of sparse matrix
    Precondition: will only work with a binary matrix. */
 SMAT *sm_input( FILE *fp )
 {
@@ -153,14 +155,14 @@ SMAT *sm_input( FILE *fp )
   int c;      /* index of current column */
   SROW *ri;   /* pointer to the current row in M */
   u_int m,n,i,j,k;
-  
+
   /* get dimension */
   if( fscanf( fp, " SparseMatrix: %u by %u", &m, &n ) < 2 )
   {
     fprintf( stderr, "sm_input error reading dimensions" );
     exit( -1 );
   }
-  
+
   if( (col = NEW_A(n,u_int)) == (u_int *)NULL )
   {
     fprintf( stderr, "sm_input memory error" );
@@ -168,7 +170,7 @@ SMAT *sm_input( FILE *fp )
   }
 
   M = sm_get( m, n );
-  
+
   /* get entries */
   for( i=0 ; i<m ; i++ )
   {
@@ -206,17 +208,17 @@ SMAT *sm_input( FILE *fp )
 
     for( k = 0 ; k < j ; k++ )
     {
-      ri->col[k] = col[k]; 
+      ri->col[k] = col[k];
       ri->val[k] = 1.0;
     }
   }
-  
+
   free( col );
 
   return M;
 }
 
-/* sm_output -- file output of sparse matrix 
+/* sm_output -- file output of sparse matrix
    Postcondition: the result is not a valid entry for sm_input,
      since it also works for a non-binary matrix. */
 void sm_output( FILE *fp, SMAT *M )
@@ -228,7 +230,7 @@ void sm_output( FILE *fp, SMAT *M )
 
   for( i = 0 ; i < M->m ; i++ )
   {
-    fprintf( fp, "row %u: ", i ); 
+    fprintf( fp, "row %u: ", i );
     ri = &( M->row[i] );
     for( j = 0 ; j < ri->nnz ; j++ )
     {
@@ -248,6 +250,44 @@ void v_output( FILE *fp, VEC *v )
   putc( '\n', fp );
 }
 
+void m_to_h(SMAT *M)
+{
+    u_int sizeM = M->m;
+    for(int i = 0; i < sizeM; i++)
+    {
+        for(int j = 0; j< M->row[i].nnz; j++)
+        {
+            M->row[i].val[j] = 1.0/M->row[i].nnz;
+        }
+    }
+}
+VEC *createVec(int m)
+{
+    VEC *myVec = v_get(m);
+    for(int i=0;i<m;i++)
+    {
+        myVec->e[i] = 1.0/m;
+    }
+    return myVec;
+}
+
+VEC *multiply(VEC *vec, SMAT *H )
+{
+    VEC *newVec;
+    newVec = v_get(vec->dim);
+
+    for(int j=0; j<H->m;j++)
+    {
+        for(int k=0;k<H->row[j].nnz;k++)
+        {
+            newVec->e[H->row[j].col[k]] += H->row[j].val[k]*vec->e[j];
+        }
+    }
+
+    v_free(vec);
+    return newVec;
+}
+
 int main()
 {
   FILE *fp;
@@ -257,8 +297,22 @@ int main()
   SM = sm_input( fp );
   fclose( fp );
 
+  m_to_h(SM);
+  VEC *vec = createVec(SM->m);
+
+  v_output(stdout, vec);
+  printf("\n");
+  for(int i=0; i<NBMULT; i++)
+  {
+      vec = multiply(vec, SM);
+  }
+
+  v_output(stdout, vec);
+  printf("\n");
+
   sm_output( stdout, SM );
 
+  v_free(vec);
   sm_free( SM );
 
   return 0;
